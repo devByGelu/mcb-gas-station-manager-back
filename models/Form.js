@@ -8,6 +8,13 @@ const Form = function (form) {
   this.date = date
   this.shift = shift
 }
+Form.delete = (fId) => {
+  return new Promise((resolve, reject) => {
+    sql.query(`DELETE FROM form WHERE fId = ?`, fId, (err, res) =>
+      err ? reject(err) : resolve(res)
+    )
+  })
+}
 Form.create = (form) => {
   return new Promise((resolve, reject) => {
     sql.query(`INSERT INTO form SET ?`, form, (err, res) =>
