@@ -37,9 +37,7 @@ ShiftForm.getByMonth = (year, month) => {
     );
   });
 };
-ShiftForm.download = async (startDate,endDate,type) => {
-  
-}
+ShiftForm.download = async (startDate, endDate, type) => {};
 ShiftForm.update = async (shiftForm, fId) => {
   // delete
   const tables = [
@@ -154,7 +152,100 @@ ShiftForm.create = async (shiftForm, shiftFormFId) => {
     console.log(error);
   }
 };
+function formatShiftForResults() {
+  if (result.shiftFormNotFound) {
+    console.log("heyy");
+    console.log(result.res);
+    // Formatting date
+    const d = new Date(year, parseInt(month, "10") - 1, day); // deduct 1 to respect month index
+    let formData = {
+      shiftFormNotFound: result.shiftFormNotFound,
+      shiftDate: dateFormat(d, "yyyy-mm-dd"),
+      shift: shift,
+      placement,
+      pump1: getPumpInfo(1, null, result.res),
+      pump2: getPumpInfo(2, null, result.res),
+      pump3: getPumpInfo(3, null, result.res),
+      pump4: getPumpInfo(4, null, result.res),
+      pumpAttendants: [null, null, null],
 
+      expenses: [],
+      creditsales: [],
+      cashadvance: [],
+    };
+    console.log(formData);
+    return formData;
+  } else {
+    // Formattig results
+    // Cashier
+    let cashier = result[0].find((employee) => employee.role === "Cashier");
+    // PAs
+    let pumpAttendants = [];
+    result[0].forEach((pa) => {
+      if (pa.role === "Pump Attendant") pumpAttendants.push(pa.eId);
+    });
+    // Group 1 prices
+    let group1 = {};
+    result[1].forEach((el) => {
+      if (el.groupNum === 1) group1[el.pName] = el.price;
+    });
+    // Group 2 prices
+    let group2 = {};
+    result[1].forEach((el) => {
+      if (el.groupNum === 2) group2[el.pName] = el.price;
+    });
+    // For dipstick
+    const dipstick = {};
+    const dipstickFields = [
+      "closingLevel",
+      "closingLiters",
+      "openingLevel",
+      "openingLiters",
+    ];
+    result[8].forEach((current) => {
+      const { pName } = current;
+      dipstickFields.forEach((field) => {
+        dipstick[pName] = {
+          ...dipstick[pName],
+          [field]: current[field],
+        };
+      });
+    });
+    const { diesel = 0, accelrate = 0, jxpremium = 0 } = dipstick;
+    // Formatting date
+    const d = new Date(year, parseInt(month, "10") - 1, day); // deduct 1 to respect month index
+    let formData = {
+      fId: cashier.fId,
+      shiftDate: dateFormat(d, "yyyy-mm-dd"),
+      shift: shift,
+      placement,
+      cashier: cashier.eId,
+      pumpAttendants,
+      group1,
+      group2,
+      pump1: getPumpInfo(1, result[2], result[10]),
+      pump2: getPumpInfo(2, result[2], result[10]),
+      pump3: getPumpInfo(3, result[2], result[10]),
+      pump4: getPumpInfo(4, result[2], result[10]),
+      dropForm: {
+        drops: result[3][0].drops,
+        amtPerDrop: result[3][0].amtPerDrop,
+        lastDrop: result[3][0].lastDrop,
+      },
+      breakdown: result[4][0],
+      expenses: result[5],
+      creditsales: result[6],
+      cashadvance: result[7].map((el) => {
+        return { employee: el.eId, amt: el.amount };
+      }),
+      diesel,
+      accelrate,
+      jxpremium,
+    };
+    console.log(formData);
+    return formData;
+  }
+}
 // Getting shift form data
 ShiftForm.get = async (date, shift, placement) => {
   let fId = null;
