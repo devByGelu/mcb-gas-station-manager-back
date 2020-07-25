@@ -1,5 +1,5 @@
 const sql = require("./db.js");
-
+const dateFormat= require('dateformat')
 const ShiftForm = function (shiftForm) {
   const {
     form,
@@ -152,12 +152,60 @@ ShiftForm.create = async (shiftForm, shiftFormFId) => {
     console.log(error);
   }
 };
-function formatShiftForResults() {
+const getPumpInfo = (num, currentBasis, previousBasis) => {
+  let pumpInfo = {};
+  // When form is created
+  if (currentBasis) {
+    if (currentBasis.length)
+      currentBasis.forEach((curr) => {
+        if (previousBasis)
+          // For forms with entries and with previous bases (with end and beg)
+          previousBasis.forEach((prev) => {
+            if (curr.pName == prev.pName) {
+              if (curr.pumpNum == num) {
+                const { end, cal, mgn, advance_reading, pName } = curr;
+                const beg = prev.end;
+                pumpInfo[pName] = {
+                  beg,
+                  end,
+                  cal,
+                  mgn,
+                  advRd: advance_reading,
+                };
+              }
+            }
+          });
+        else {
+          // Catches case when origin form is opened
+          const { end, cal, mgn, advance_reading, pName } = curr;
+          pumpInfo[pName] = {
+            end,
+            cal,
+            mgn,
+            advRd: advance_reading,
+          };
+        }
+      });
+  }
+  // When trying to create a form
+  else {
+    previousBasis.forEach((prev) => {
+      const { end, pName } = prev;
+      const beg = end;
+      pumpInfo[pName] = {
+        beg,
+      };
+    });
+  }
+  return pumpInfo;
+};
+function formatShiftForResults(result,shiftFormDate,placement,shift) {
   if (result.shiftFormNotFound) {
     console.log("heyy");
     console.log(result.res);
     // Formatting date
-    const d = new Date(year, parseInt(month, "10") - 1, day); // deduct 1 to respect month index
+    // const d = new Date(year, parseInt(month, "10") - 1, day); // deduct 1 to respect month index
+    const d = new Date(shiftFormDate); // deduct 1 to respect month index
     let formData = {
       shiftFormNotFound: result.shiftFormNotFound,
       shiftDate: dateFormat(d, "yyyy-mm-dd"),
@@ -213,7 +261,7 @@ function formatShiftForResults() {
     });
     const { diesel = 0, accelrate = 0, jxpremium = 0 } = dipstick;
     // Formatting date
-    const d = new Date(year, parseInt(month, "10") - 1, day); // deduct 1 to respect month index
+    const d = new Date(shiftFormDate); // deduct 1 to respect month index
     let formData = {
       fId: cashier.fId,
       shiftDate: dateFormat(d, "yyyy-mm-dd"),
@@ -267,17 +315,19 @@ ShiftForm.get = async (date, shift, placement) => {
     // Base beg from the earliest shift form placed
     // Getting form of earliest placement
     if (!lastShiftForm.length) {
-      return new Promise(async (resolve, reject) => {
-        let shiftForms = await myQuery(
-          "SELECT * FROM `shift_form` ORDER BY `shift_form`.`date` ASC, `shift_form`.`placement` ASC",
-          []
-        );
-        let lastShiftForm = shiftForms[shiftForms.length - 1];
-        // Returning the overall latest placement
-        sql.query(pumpInfosQuery, [lastShiftForm.fId], (err, res) => {
-          return err ? reject(err) : resolve({ res, shiftFormNotFound: true });
-        });
-      });
+      // return new Promise(async (resolve, reject) => {
+      let shiftForms = await myQuery(
+        "SELECT * FROM `shift_form` ORDER BY `shift_form`.`date` ASC, `shift_form`.`placement` ASC",
+        []
+      );
+      let lastShiftForm = shiftForms[shiftForms.length - 1];
+      // Returning the overall latest placement
+      let result = await myQuery(pumpInfosQuery, [lastShiftForm.fId]);
+      return formatShiftForResults({res: result,shiftFormNotFound: true},date,placement,shift)
+      // sql.query(pumpInfosQuery, [lastShiftForm.fId], (err, res) => {
+      //   return err ? reject(err) : resolve({ res, shiftFormNotFound: true });
+      // });
+      // });
     } else
       return new Promise((resolve, reject) => {
         sql.query(pumpInfosQuery, [lastShiftForm[0].fId], async (err, res) => {

@@ -19,7 +19,7 @@ exports.getByMonth = async (req, res, next) => {
 exports.download = async (req, res, next) => {
   const { startDate, endDate, type } = req.query;
   try {
-    const result = await ShiftForm.download(start,end,type);
+    const result = await ShiftForm.download(start, end, type);
     res.status(200).json(result);
   } catch (error) {
     res.status(500).send({ message: error });
@@ -150,7 +150,7 @@ exports.get = async (req, res, next) => {
       shift,
       placement
     );
-    // 
+    //
     console.log(result);
     if (result.shiftFormNotFound) {
       console.log("heyy");
