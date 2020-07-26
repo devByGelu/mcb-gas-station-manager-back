@@ -1,5 +1,5 @@
 const sql = require("./db.js");
-const dateFormat= require('dateformat')
+const dateFormat = require("dateformat");
 const ShiftForm = function (shiftForm) {
   const {
     form,
@@ -31,13 +31,30 @@ const myQuery = (query, params) =>
 ShiftForm.getByMonth = (year, month) => {
   return new Promise((resolve, reject) => {
     sql.query(
-      "SELECT * FROM `shift_form` WHERE MONTH(date) = ? AND YEAR(date) = ? ORDER BY `shift_form`.`date` DESC, `shift_form`.`placement` ASC",
+      "SELECT * FROM `shift_form` WHERE MONTH(date) = ? AND YEAR(date) = ? ORDER BY `shift_form`.`date` DESC, `shift_form`.`shift` ASC, `shift_form`.`placement` ASC",
       [month, year],
       (err, res) => (err ? reject(err) : resolve(res))
     );
   });
 };
-ShiftForm.download = async (startDate, endDate, type) => {};
+ShiftForm.download = async (startDate, endDate) => {
+  // get all shiftForms between the dates inclusive
+  const result = await myQuery(
+    "SELECT * FROM shift_form WHERE date >= ?  AND date <= ? ORDER BY `shift_form`.`date` DESC, `shift_form`.`shift` ASC, `shift_form`.`placement` ASC",
+    [startDate, endDate]
+  );
+  console.log(result);
+  // var start = new Date(startDate);
+  // var end = new Date(endDate);
+
+  // var loop = new Date(start);
+  // while (loop <= end) {
+  //   console.log(JSON.stringify(dateFormat(loop,'yyyy-mm-dd')));
+
+  //   var newDate = loop.setDate(loop.getDate() + 1);
+  //   loop = new Date(newDate);
+  // }
+};
 ShiftForm.update = async (shiftForm, fId) => {
   // delete
   const tables = [
@@ -75,7 +92,7 @@ ShiftForm.create = async (shiftForm, shiftFormFId) => {
     const { date, placement } = form; // Targets
     // Find form with same placement
     let sameDateForms = await myQuery(
-      "SELECT * FROM `shift_form` WHERE date = ? ORDER BY `date` DESC, `placement` ASC",
+      "SELECT * FROM `shift_form` WHERE date = ? ORDER BY `shift_form`.`date` DESC, `shift_form`.`shift` ASC, `shift_form`.`placement` ASC",
       date
     );
     const samePlacementFormIndex = sameDateForms.findIndex(
@@ -199,10 +216,10 @@ const getPumpInfo = (num, currentBasis, previousBasis) => {
   }
   return pumpInfo;
 };
-function formatShiftForResults(result,shiftFormDate,placement,shift) {
+function formatShiftForResults(result, shiftFormDate, placement, shift) {
   if (result.shiftFormNotFound) {
     console.log("heyy");
-    console.log(result.res);
+    // console.log(result.res);
     // Formatting date
     // const d = new Date(year, parseInt(month, "10") - 1, day); // deduct 1 to respect month index
     const d = new Date(shiftFormDate); // deduct 1 to respect month index
@@ -221,7 +238,7 @@ function formatShiftForResults(result,shiftFormDate,placement,shift) {
       creditsales: [],
       cashadvance: [],
     };
-    console.log(formData);
+    // console.log(formData);
     return formData;
   } else {
     // Formattig results
@@ -290,7 +307,7 @@ function formatShiftForResults(result,shiftFormDate,placement,shift) {
       accelrate,
       jxpremium,
     };
-    console.log(formData);
+    // console.log(formData);
     return formData;
   }
 }
@@ -302,8 +319,9 @@ ShiftForm.get = async (date, shift, placement) => {
     `SELECT * FROM shift_form WHERE date = ? AND shift = ? AND placement = ?`,
     [date, shift, placement]
   );
+
+  // User is trying to create a new form
   if (!currShiftForm.length) {
-    // User is trying to create a new form
     console.log("Creating shiftForm");
     let lastShiftForm = await myQuery(
       `SELECT * FROM shift_form WHERE date = ? AND shift = ? AND placement = ?`,
@@ -312,31 +330,61 @@ ShiftForm.get = async (date, shift, placement) => {
     const pumpInfosQuery = `SELECT * FROM pump_info WHERE fId = ?`;
     // First check if the opened form has a basis for beg values
     // If not
-    // Base beg from the earliest shift form placed
+    // Base beg from the earliest shift form placed within the day or earlier
     // Getting form of earliest placement
     if (!lastShiftForm.length) {
       // return new Promise(async (resolve, reject) => {
       let shiftForms = await myQuery(
-        "SELECT * FROM `shift_form` ORDER BY `shift_form`.`date` ASC, `shift_form`.`placement` ASC",
+        "SELECT * FROM `shift_form` ORDER BY `shift_form`.`date` DESC, `shift_form`.`shift` ASC, `shift_form`.`placement` ASC",
         []
       );
-      let lastShiftForm = shiftForms[shiftForms.length - 1];
-      // Returning the overall latest placement
-      let result = await myQuery(pumpInfosQuery, [lastShiftForm.fId]);
-      return formatShiftForResults({res: result,shiftFormNotFound: true},date,placement,shift)
-      // sql.query(pumpInfosQuery, [lastShiftForm.fId], (err, res) => {
-      //   return err ? reject(err) : resolve({ res, shiftFormNotFound: true });
-      // });
-      // });
-    } else
-      return new Promise((resolve, reject) => {
-        sql.query(pumpInfosQuery, [lastShiftForm[0].fId], async (err, res) => {
-          return err ? reject(err) : resolve({ res, shiftFormNotFound: true });
-        });
+      let lastShiftForm = shiftForms.find((form) => {
+        const comparedShiftFormDate = new Date(form.date);
+        const toOpenShiftFormDate = new Date(date);
+        const comparedShiftFormPlacement = form.placement;
+        const toOpenShiftFormPlacement = placement;
+        if (toOpenShiftFormDate > comparedShiftFormDate) return true;
+        else if (toOpenShiftFormDate.getTime == comparedShiftFormDate.getTime)
+          if (
+            parseInt(toOpenShiftFormPlacement) >
+            parseInt(comparedShiftFormPlacement)
+          )
+            return true;
       });
-    // Return placement - 1's beginning
+
+      console.log(
+        "previous form: ",
+        JSON.stringify(dateFormat(new Date(lastShiftForm.date), "yyyy-mm-dd"))
+      );
+      console.log(
+        "additional info: ",
+        lastShiftForm.shift,
+        "(shift) ",
+        lastShiftForm.placement,
+        " (placement)"
+      );
+      // If shiftForm at placement - 1 does not exists,
+      // return the overall latest placement where the date is earliest
+      // compared to the form
+      let result = await myQuery(pumpInfosQuery, [lastShiftForm.fId]);
+      return formatShiftForResults(
+        { res: result, shiftFormNotFound: true },
+        date,
+        placement,
+        shift
+      );
+    } else {
+      // If shiftForm at placement - 1 exists,
+      let result = await myQuery(pumpInfosQuery, [lastShiftForm[0].fId]);
+      return formatShiftForResults(
+        { res: result, shiftFormNotFound: true },
+        date,
+        placement,
+        shift
+      );
+    }
+    // User is trying to open an exisiting form
   } else {
-    // If user is tring to open an exisiting form
     fId = currShiftForm[0].fId;
 
     // Get pumpInfos1234s' beg, and dipstick's
@@ -349,43 +397,45 @@ ShiftForm.get = async (date, shift, placement) => {
     let lastShiftForm = shiftForms[lastShiftFormIndex];
 
     //
-    return new Promise((resolve, reject) => {
-      const shiftEmployeesQuery = `SELECT * FROM shift_employee WHERE fId = ?`;
-      const pumpGroupPricesQuery = `SELECT * FROM pump_group_price WHERE fId = ?`;
-      const pumpInfosQuery = `SELECT * FROM pump_info WHERE fId = ?`;
-      const dropFormQuery = `SELECT * FROM drop_form WHERE fId = ?`;
-      const lastDropBreakDownQuery = `SELECT * FROM last_drop_breakdown WHERE fId = ?`;
-      const expensesQuery = `SELECT * FROM expense WHERE fId = ?`;
-      const creditSalesQuery = `SELECT * FROM credit_sale WHERE fId = ?`;
-      const cashAdvancesQuery = `SELECT * FROM cash_advance WHERE fId = ?`;
-      const dipstickQuery = `SELECT * FROM dipstick_reading WHERE fId = ?`;
-      const lastShiftFormDipstickQuery = `SELECT * FROM dipstick_reading WHERE fId = ?`;
-      const lastShiftFormPumpInfosQuery = `SELECT * FROM pump_info WHERE fId = ?`;
-      if (lastShiftForm)
-        sql.query(
-          `${shiftEmployeesQuery}; ${pumpGroupPricesQuery}; ${pumpInfosQuery}; ${dropFormQuery}; ${lastDropBreakDownQuery}; ${expensesQuery}; ${creditSalesQuery}; ${cashAdvancesQuery}; ${dipstickQuery}; ${lastShiftFormDipstickQuery}; ${lastShiftFormPumpInfosQuery}`,
-          [
-            fId,
-            fId,
-            fId,
-            fId,
-            fId,
-            fId,
-            fId,
-            fId,
-            fId,
-            lastShiftForm.fId,
-            lastShiftForm.fId,
-          ],
-          (err, res) => (err ? reject(err) : resolve(res))
-        );
-
-      sql.query(
-        `${shiftEmployeesQuery}; ${pumpGroupPricesQuery}; ${pumpInfosQuery}; ${dropFormQuery}; ${lastDropBreakDownQuery}; ${expensesQuery}; ${creditSalesQuery}; ${cashAdvancesQuery}; ${dipstickQuery}`,
-        [fId, fId, fId, fId, fId, fId, fId, fId, fId],
-        (err, res) => (err ? reject(err) : resolve(res))
+    // return new Promise((resolve, reject) => {
+    const shiftEmployeesQuery = `SELECT * FROM shift_employee WHERE fId = ?`;
+    const pumpGroupPricesQuery = `SELECT * FROM pump_group_price WHERE fId = ?`;
+    const pumpInfosQuery = `SELECT * FROM pump_info WHERE fId = ?`;
+    const dropFormQuery = `SELECT * FROM drop_form WHERE fId = ?`;
+    const lastDropBreakDownQuery = `SELECT * FROM last_drop_breakdown WHERE fId = ?`;
+    const expensesQuery = `SELECT * FROM expense WHERE fId = ?`;
+    const creditSalesQuery = `SELECT * FROM credit_sale WHERE fId = ?`;
+    const cashAdvancesQuery = `SELECT * FROM cash_advance WHERE fId = ?`;
+    const dipstickQuery = `SELECT * FROM dipstick_reading WHERE fId = ?`;
+    const lastShiftFormDipstickQuery = `SELECT * FROM dipstick_reading WHERE fId = ?`;
+    const lastShiftFormPumpInfosQuery = `SELECT * FROM pump_info WHERE fId = ?`;
+    // When getting a created form with an existing form at placement - 1
+    if (lastShiftForm) {
+      let result = await myQuery(
+        `${shiftEmployeesQuery}; ${pumpGroupPricesQuery}; ${pumpInfosQuery}; ${dropFormQuery}; ${lastDropBreakDownQuery}; ${expensesQuery}; ${creditSalesQuery}; ${cashAdvancesQuery}; ${dipstickQuery}; ${lastShiftFormDipstickQuery}; ${lastShiftFormPumpInfosQuery}`,
+        [
+          fId,
+          fId,
+          fId,
+          fId,
+          fId,
+          fId,
+          fId,
+          fId,
+          fId,
+          lastShiftForm.fId,
+          lastShiftForm.fId,
+        ]
       );
-    });
+      return formatShiftForResults(result, date, placement, shift);
+    }
+    // This case is when getting the 'origin' form
+
+    let result = await myQuery(
+      `${shiftEmployeesQuery}; ${pumpGroupPricesQuery}; ${pumpInfosQuery}; ${dropFormQuery}; ${lastDropBreakDownQuery}; ${expensesQuery}; ${creditSalesQuery}; ${cashAdvancesQuery}; ${dipstickQuery}`,
+      [fId, fId, fId, fId, fId, fId, fId, fId, fId]
+    );
+    return formatShiftForResults(result, date, placement, shift);
   }
 };
 
