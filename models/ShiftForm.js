@@ -1,5 +1,10 @@
 const sql = require("./db.js");
+const excel = require("exceljs");
 const dateFormat = require("dateformat");
+const Employee = require("./Employee.js");
+const ExpenseCategory = require("./ExpenseCategory.js");
+const Customer = require("./Customer.js");
+const Product = require("./Product.js");
 const ShiftForm = function (shiftForm) {
   const {
     form,
@@ -37,23 +42,46 @@ ShiftForm.getByMonth = (year, month) => {
     );
   });
 };
-ShiftForm.download = async (startDate, endDate) => {
-  // get all shiftForms between the dates inclusive
-  const result = await myQuery(
-    "SELECT * FROM shift_form WHERE date >= ?  AND date <= ? ORDER BY `shift_form`.`date` DESC, `shift_form`.`shift` ASC, `shift_form`.`placement` ASC",
-    [startDate, endDate]
-  );
-  console.log(result);
-  // var start = new Date(startDate);
-  // var end = new Date(endDate);
+ShiftForm.getBetweenDates = (startDate, endDate) => {
+  return new Promise((resolve, reject) => {
+    sql.query(
+      "SELECT * FROM shift_form WHERE date >= ?  AND date <= ? ORDER BY `shift_form`.`date` DESC, `shift_form`.`shift` ASC, `shift_form`.`placement` ASC",
+      [startDate, endDate],
+      (err, res) => (err ? reject(err) : resolve(res))
+    );
+  });
+};
+ShiftForm.fillBasicInfo = (sheet, formData) => {
+  sheet.getRow(1).getCell(1).value = "DATE";
+  sheet.getRow(2).getCell(1).value = "SHIFT";
+  sheet.getRow(3).getCell(1).value = "CASHIER";
+  sheet.getRow(4).getCell(1).value = "PAs";
 
-  // var loop = new Date(start);
-  // while (loop <= end) {
-  //   console.log(JSON.stringify(dateFormat(loop,'yyyy-mm-dd')));
+  const {
+    shiftDate,
+    shift,
+    placement,
+    cashier,
+    pumpAttendants,
+    employees,
+  } = formData;
 
-  //   var newDate = loop.setDate(loop.getDate() + 1);
-  //   loop = new Date(newDate);
-  // }
+  const getEmployeeNickNames = (eIds) => {
+    let names = "";
+    eIds.forEach((eId, index) => {
+      const employee = employees.find((emp) => emp.eId === eId);
+      if (index > 0) names = `${names}, ${employee.nickName}`;
+      else names = `${employee.nickName}`;
+    });
+    return names;
+  };
+
+  sheet.getRow(1).getCell(2).value = shiftDate;
+  sheet.getRow(2).getCell(2).value = shift;
+  sheet.getRow(3).getCell(2).value = getEmployeeNickNames([cashier]);
+  sheet.getRow(4).getCell(2).value = getEmployeeNickNames(pumpAttendants);
+
+  return sheet;
 };
 ShiftForm.update = async (shiftForm, fId) => {
   // delete
@@ -65,7 +93,7 @@ ShiftForm.update = async (shiftForm, fId) => {
     "drop_form",
     "last_drop_breakdown",
     "cash_advance",
-    "expense",
+    "e xpense",
     "credit_sale",
   ];
   tables.forEach(async (tableName) => {

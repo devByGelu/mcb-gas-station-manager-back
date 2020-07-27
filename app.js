@@ -16,7 +16,7 @@ app.use(bodyParser.json());
 
 // parse requests of content-type: application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cors());
+app.use(cors({exposedHeaders: ['Content-Length', 'X-Suggested-Filename'],}));
 app.use((req, res, next) => {
   if ("OPTIONS" == req.method) {
     res.sendStatus(200);

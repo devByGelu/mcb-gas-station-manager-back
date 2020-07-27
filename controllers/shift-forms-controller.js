@@ -18,36 +18,63 @@ exports.getByMonth = async (req, res, next) => {
   }
 };
 exports.download = async (req, res, next) => {
+  const employees = await Employee.getAll();
+  const expenseCategories = await ExpenseCategory.getAll();
+  const customers = await Customer.getAll();
+  const products = await Product.getAll();
   const { startDate, endDate } = req.query;
   try {
-    // const result = await ShiftForm.download(startDate, endDate);
+    const templatePath = "";
     let workbook = new excel.Workbook();
-    let worksheet = workbook.addWorksheet("Tutorials");
+    let templateWorkbook = new excel.Workbook();
+    await templateWorkbook.xlsx.readFile(templatePath); // Add template from path
+    let sheetToClone = workbook.getWorkSheet(1); // First page of the workbook is the template
 
-    worksheet.columns = [
-      { header: "Id", key: "id", width: 5 },
-      { header: "Title", key: "title", width: 25 },
-      { header: "Description", key: "description", width: 25 },
-      { header: "Published", key: "published", width: 10 },
-    ];
+    const shiftForms = await ShiftForm.getBetweenDates(startDate, endDate);
 
-    // Add Array Rows
-    worksheet.addRows(tutorials);
+    shiftForms.forEach(async (shiftForm, index) => {
+      let { date, shift, placement } = shiftForm;
 
-    // res is a Stream object
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=" + "tutorials.xlsx"
-    );
+      // Reformat date
+      date = dateFormat(new Date(date), "yyyy-m-d");
 
-    return workbook.xlsx.write(res).then(function () {
-      res.status(200).end();
+      // Get formData of shiftForm
+      let formData = await ShiftForm.get(date, shift, placement);
+
+      // Append more data for reference
+      formData = {
+        ...formData,
+        expenseCategories,
+        customers,
+        products,
+        employees,
+      };
+
+      const sheetName = `${date}-${placement}-${shift}`;
+
+      let sheet = workbook.addWorksheet(sheetName); // Add worksheet
+      sheet.model = sheetToClone.model; // Clone template
+
+      sheet = ShiftForm.fillBasicInfo(sheet, formData);
+
+      if (index === shiftForms.length - 1) {
+        console.log(workbook);
+
+        res.setHeader(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        );
+        res.setHeader("X-Suggested-Filename", "angelu");
+        res.setHeader(
+          "Content-Disposition",
+          "attachment; filename=" + "angelu"
+        );
+
+        return workbook.xlsx.write(res).then(function () {
+          res.status(200).end();
+        });
+      }
     });
-    // res.status(200).json(result);
   } catch (error) {
     console.log(error);
     res.status(500).send({ message: error });
