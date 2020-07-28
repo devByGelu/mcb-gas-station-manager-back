@@ -62,7 +62,12 @@ exports.download = async (req, res, next) => {
       // Fill-up basic info
       const { shiftDate, cashier, pumpAttendants } = formData;
       target = sheet.range("B1:B4");
-      target.value([[shiftDate], [shift], [getEmployeeNickNames([cashier])], [getEmployeeNickNames(pumpAttendants)]]);
+      target.value([
+        [shiftDate],
+        [shift],
+        [getEmployeeNickNames([cashier])],
+        [getEmployeeNickNames(pumpAttendants)],
+      ]);
     }
 
     console.log("saving...");
@@ -70,7 +75,6 @@ exports.download = async (req, res, next) => {
     // // add worksheet
     res.attachment("bruhx.xlsx");
     res.send(data);
-
   } catch (error) {
     console.log(error);
     res.status(500).send({ message: error });
