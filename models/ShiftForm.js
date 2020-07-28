@@ -42,6 +42,7 @@ ShiftForm.getByMonth = (year, month) => {
     );
   });
 };
+
 ShiftForm.getBetweenDates = (startDate, endDate) => {
   return new Promise((resolve, reject) => {
     sql.query(
@@ -52,11 +53,6 @@ ShiftForm.getBetweenDates = (startDate, endDate) => {
   });
 };
 ShiftForm.fillBasicInfo = (sheet, formData) => {
-  sheet.getRow(1).getCell(1).value = "DATE";
-  sheet.getRow(2).getCell(1).value = "SHIFT";
-  sheet.getRow(3).getCell(1).value = "CASHIER";
-  sheet.getRow(4).getCell(1).value = "PAs";
-
   const {
     shiftDate,
     shift,
@@ -93,7 +89,7 @@ ShiftForm.update = async (shiftForm, fId) => {
     "drop_form",
     "last_drop_breakdown",
     "cash_advance",
-    "e xpense",
+    "expense",
     "credit_sale",
   ];
   tables.forEach(async (tableName) => {
