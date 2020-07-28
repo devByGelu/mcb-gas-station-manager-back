@@ -24,11 +24,10 @@ exports.download = async (req, res, next) => {
   const products = await Product.getAll();
   const { startDate, endDate } = req.query;
   try {
-    const templatePath = "";
+    const templatePath = "data/dsr-template.xlsx";
     let workbook = new excel.Workbook();
-    let templateWorkbook = new excel.Workbook();
-    await templateWorkbook.xlsx.readFile(templatePath); // Add template from path
-    let sheetToClone = workbook.getWorkSheet(1); // First page of the workbook is the template
+    await workbook.xlsx.readFile(templatePath); // Add template from path
+    let sheetToClone = workbook.getWorksheet("template"); // First page of the workbook is the template
 
     const shiftForms = await ShiftForm.getBetweenDates(startDate, endDate);
 
@@ -52,8 +51,9 @@ exports.download = async (req, res, next) => {
 
       const sheetName = `${date}-${placement}-${shift}`;
 
-      let sheet = workbook.addWorksheet(sheetName); // Add worksheet
+      let sheet = workbook.addWorksheet("Sheet"); // Add worksheet
       sheet.model = sheetToClone.model; // Clone template
+      sheet.name = sheetName;
 
       sheet = ShiftForm.fillBasicInfo(sheet, formData);
 
@@ -64,11 +64,8 @@ exports.download = async (req, res, next) => {
           "Content-Type",
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         );
-        res.setHeader("X-Suggested-Filename", "angelu");
-        res.setHeader(
-          "Content-Disposition",
-          "attachment; filename=" + "angelu"
-        );
+        res.setHeader("X-Suggested-Filename", "wa3.xlsx");
+        res.attachment('bruh.xlsx')
 
         return workbook.xlsx.write(res).then(function () {
           res.status(200).end();
