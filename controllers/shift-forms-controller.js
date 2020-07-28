@@ -1,4 +1,5 @@
 const sql = require("../models/db");
+const XlsxPopulate = require("xlsx-populate");
 const excel = require("exceljs");
 const dateFormat = require("dateFormat");
 const ShiftForm = require("../models/ShiftForm");
@@ -17,61 +18,59 @@ exports.getByMonth = async (req, res, next) => {
     res.status(500).send({ message: error });
   }
 };
+
 exports.download = async (req, res, next) => {
+  const { startDate, endDate } = req.query;
   const employees = await Employee.getAll();
   const expenseCategories = await ExpenseCategory.getAll();
   const customers = await Customer.getAll();
   const products = await Product.getAll();
-  const { startDate, endDate } = req.query;
+
+  const getEmployeeNickNames = (eIds) => {
+    let names = "";
+    eIds.forEach((eId, index) => {
+      const employee = employees.find((emp) => emp.eId === eId);
+      if (index > 0) names = `${names}, ${employee.nickName}`;
+      else names = `${employee.nickName}`;
+    });
+    return names;
+  };
   try {
     const templatePath = "data/dsr-template.xlsx";
-    let workbook = new excel.Workbook();
-    await workbook.xlsx.readFile(templatePath); // Add template from path
-    let sheetToClone = workbook.getWorksheet("template"); // First page of the workbook is the template
+    const workbook = await XlsxPopulate.fromFileAsync(templatePath);
 
     const shiftForms = await ShiftForm.getBetweenDates(startDate, endDate);
 
-    shiftForms.forEach(async (shiftForm, index) => {
+    for (const shiftForm of shiftForms) {
       let { date, shift, placement } = shiftForm;
-
-      // Reformat date
       date = dateFormat(new Date(date), "yyyy-m-d");
-
-      // Get formData of shiftForm
-      let formData = await ShiftForm.get(date, shift, placement);
-
-      // Append more data for reference
+      let formData = await ShiftForm.get(date, shift, placement); // Fetch info about the shift form
       formData = {
         ...formData,
         expenseCategories,
         customers,
         products,
         employees,
-      };
+      }; // Append constants
 
-      const sheetName = `${date}-${placement}-${shift}`;
+      const sheetName = `${date}-${placement}-${shift}`; // Set worksheet's name
+      const sheet = workbook.cloneSheet(workbook.sheet("template"), sheetName); // Clone worksheet from template
 
-      let sheet = workbook.addWorksheet("Sheet"); // Add worksheet
-      sheet.model = sheetToClone.model; // Clone template
-      sheet.name = sheetName;
+      // Filling up worksheet //
+      let target = null;
 
-      sheet = ShiftForm.fillBasicInfo(sheet, formData);
+      // Fill-up basic info
+      const { shiftDate, cashier, pumpAttendants } = formData;
+      target = sheet.range("B1:B4");
+      target.value([[shiftDate], [shift], [getEmployeeNickNames([cashier])], [getEmployeeNickNames(pumpAttendants)]]);
+    }
 
-      if (index === shiftForms.length - 1) {
-        console.log(workbook);
+    console.log("saving...");
+    const data = await workbook.outputAsync();
+    // // add worksheet
+    res.attachment("bruhx.xlsx");
+    res.send(data);
 
-        res.setHeader(
-          "Content-Type",
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        );
-        res.setHeader("X-Suggested-Filename", "wa3.xlsx");
-        res.attachment('bruh.xlsx')
-
-        return workbook.xlsx.write(res).then(function () {
-          res.status(200).end();
-        });
-      }
-    });
   } catch (error) {
     console.log(error);
     res.status(500).send({ message: error });
