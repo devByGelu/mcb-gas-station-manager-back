@@ -53,6 +53,38 @@ ShiftForm.getBetweenDates = (startDate, endDate) => {
   });
 };
 
+ShiftForm.fillSummary = async (workbook, shiftForms) => {
+  let data = [];
+
+  let sheet = workbook.sheet("Summary");
+  let { date, shift, placement } = shiftForms[0];
+  date = dateFormat(new Date(date), "yyyy-mm-dd");
+
+  let firstSheetName = `${date}-${shift}-${placement}`;
+
+  let initialSalesFormula = `=SUM('${firstSheetName}'!L6,'${firstSheetName}'!L18)`;
+
+  let salesFormula = initialSalesFormula;
+
+  for (let i = 1; i < shiftForms.length; i++) {
+    let prevDate = dateFormat(new Date(shiftForms[i - 1].date), "yyyy-mm-dd");
+    let currDate = dateFormat(new Date(shiftForms[i].date), "yyyy-mm-dd");
+
+    let sheetName = `${currDate}-${shiftForms[i].shift}-${shiftForms[i].placement}`;
+
+    if (prevDate === currDate) {
+      salesFormula = `${salesFormula} + SUM('${sheetName}'!L6,'${sheetName}'!L18)`;
+      if (i === shiftForms.length - 1) data.push([prevDate, salesFormula]);
+    } else {
+      data.push([prevDate, salesFormula]);
+      salesFormula = `=SUM('${sheetName}'!L6,'${sheetName}'!L18)`;
+    }
+  }
+
+  sheet.cell("A3").value(data);
+
+  return workbook;
+};
 ShiftForm.fillDSR = async (workbook, formData) => {
   function getBreakdowndata(breakdown) {
     let data = [];

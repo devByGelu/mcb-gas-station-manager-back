@@ -46,7 +46,7 @@ exports.download = async (req, res, next) => {
       workbook = await ShiftForm.fillDSR(workbook, formData);
     }
 
-    // workbook = await ShiftForm.fillSummary(workbook, shiftForms);
+    workbook = await ShiftForm.fillSummary(workbook, shiftForms);
 
     workbook.deleteSheet("dsr-template"); //Delete template
 
