@@ -25,19 +25,9 @@ exports.download = async (req, res, next) => {
   const expenseCategories = await ExpenseCategory.getAll();
   const customers = await Customer.getAll();
   const products = await Product.getAll();
-
-  const getEmployeeNickNames = (eIds) => {
-    let names = "";
-    eIds.forEach((eId, index) => {
-      const employee = employees.find((emp) => emp.eId === eId);
-      if (index > 0) names = `${names}, ${employee.nickName}`;
-      else names = `${employee.nickName}`;
-    });
-    return names;
-  };
   try {
     const templatePath = "data/dsr-template.xlsx";
-    const workbook = await XlsxPopulate.fromFileAsync(templatePath);
+    let workbook = await XlsxPopulate.fromFileAsync(templatePath);
 
     const shiftForms = await ShiftForm.getBetweenDates(startDate, endDate);
 
@@ -53,27 +43,19 @@ exports.download = async (req, res, next) => {
         employees,
       }; // Append constants
 
-      const sheetName = `${date}-${placement}-${shift}`; // Set worksheet's name
-      const sheet = workbook.cloneSheet(workbook.sheet("template"), sheetName); // Clone worksheet from template
-
-      // Filling up worksheet //
-      let target = null;
-
-      // Fill-up basic info
-      const { shiftDate, cashier, pumpAttendants } = formData;
-      target = sheet.range("B1:B4");
-      target.value([
-        [shiftDate],
-        [shift],
-        [getEmployeeNickNames([cashier])],
-        [getEmployeeNickNames(pumpAttendants)],
-      ]);
+      workbook = await ShiftForm.fillDSR(workbook, formData, shiftForm);
     }
 
-    console.log("saving...");
+    workbook = await ShiftForm.fillSummary(workbook,shiftForms);
+
+    workbook.deleteSheet("dsr-template"); //Delete template
+
+    console.log("writing workbook...");
     const data = await workbook.outputAsync();
     // // add worksheet
-    res.attachment("bruhx.xlsx");
+    const fileName = `${startDate}-${endDate}.xlsx`;
+    res.attachment(fileName);
+    res.setHeader("x-suggested-filename", fileName);
     res.send(data);
   } catch (error) {
     console.log(error);
