@@ -52,32 +52,129 @@ ShiftForm.getBetweenDates = (startDate, endDate) => {
     );
   });
 };
-ShiftForm.fillBasicInfo = (sheet, formData) => {
-  const {
-    shiftDate,
-    shift,
-    placement,
-    cashier,
-    pumpAttendants,
-    employees,
-  } = formData;
 
-  const getEmployeeNickNames = (eIds) => {
-    let names = "";
-    eIds.forEach((eId, index) => {
-      const employee = employees.find((emp) => emp.eId === eId);
-      if (index > 0) names = `${names}, ${employee.nickName}`;
-      else names = `${employee.nickName}`;
+ShiftForm.fillDSR = async (workbook, formData) => {
+  function getBreakdowndata(breakdown) {
+    let data = [];
+    Object.keys(breakdown).forEach((key, index) => {
+      if (index > 0) data.push([breakdown[key]]);
     });
+    console.log(data);
+    return data;
+  }
+  function getDipstickData(product) {
+    return [
+      `${product.openingLevel}-${product.openingLiters}`,
+      `${product.closingLevel}-${product.closingLiters}`,
+    ];
+  }
+  function getPumpInfoData(pumpInfo, num) {
+    let order = [];
+    const { diesel, accelrate, jxpremium } = pumpInfo;
+    if (num === 1 || num === 3) order = [diesel, accelrate, jxpremium];
+    else order = [jxpremium, accelrate, diesel];
+
+    return [
+      [order[0].advRd, order[0].end, order[0].beg, order[0].cal, order[0].mgn],
+      [order[1].advRd, order[1].end, order[1].beg, order[1].cal, order[1].mgn],
+      [order[2].advRd, order[2].end, order[2].beg, order[2].cal, order[2].mgn],
+    ];
+  }
+  function getGroupPrices(group) {
+    return [group.diesel, group.jxpremium, group.accelrate];
+  }
+  function getEmployeeNames(empIds) {
+    const { employees } = formData;
+    let names = "";
+    for (let i = 0; i < empIds.length; i++) {
+      for (let j = 0; j < employees.length; j++) {
+        if (empIds[i] == employees[j].eId) {
+          if (i !== 0) {
+            names = `${names}, ${employees[j].nickName}`;
+          } else names = `${employees[j].nickName}`;
+        }
+      }
+    }
     return names;
-  };
+  }
+  let { shiftDate, shift, placement } = formData;
+  let sheetName = `${shiftDate}-${shift}-${placement}`;
+  let sheetToClone = workbook.sheet("dsr-template");
+  let currentSheet = workbook.cloneSheet(sheetToClone, sheetName);
 
-  sheet.getRow(1).getCell(2).value = shiftDate;
-  sheet.getRow(2).getCell(2).value = shift;
-  sheet.getRow(3).getCell(2).value = getEmployeeNickNames([cashier]);
-  sheet.getRow(4).getCell(2).value = getEmployeeNickNames(pumpAttendants);
+  let target = null;
 
-  return sheet;
+  const { cashier, pumpAttendants } = formData;
+  target = currentSheet.cell("B1");
+  target.value([
+    [shiftDate],
+    [shift],
+    [getEmployeeNames([cashier])],
+    [getEmployeeNames(pumpAttendants)],
+  ]);
+
+  const { group1, group2 } = formData;
+  target = currentSheet.cell("C2");
+  target.value([getGroupPrices(group1), getGroupPrices(group2)]);
+
+  const { pump1, pump2, pump3, pump4 } = formData;
+  target = currentSheet.cell("B8");
+  target.value(getPumpInfoData(pump1, 1));
+  target = currentSheet.cell("B14");
+  target.value(getPumpInfoData(pump2, 2));
+  target = currentSheet.cell("B20");
+  target.value(getPumpInfoData(pump3, 3));
+  target = currentSheet.cell("B26");
+  target.value(getPumpInfoData(pump4, 4));
+
+  const { diesel, accelrate, jxpremium } = formData;
+  target = currentSheet.cell("D32");
+  target.value([
+    getDipstickData(diesel),
+    getDipstickData(jxpremium),
+    getDipstickData(accelrate),
+  ]);
+
+  const { drops, amtPerDrop, lastDrop } = formData.dropForm;
+  target = currentSheet.cell("B36");
+  target.value([[drops], [amtPerDrop], [lastDrop]]);
+
+  target = currentSheet.cell("B44");
+  const { breakdown } = formData;
+  target.value(getBreakdowndata(breakdown));
+
+  target = currentSheet.cell("D38");
+  const { expenses, creditsales, cashadvance } = formData;
+  function formatExpensesData(data) {
+    let data1 = [];
+    data.forEach((dat) => {
+      data1.push([dat.description, dat.total]);
+    });
+    return data1;
+  }
+  function formatCashAdvanceData(data) {
+    let data1 = [];
+    data.forEach((dat) => {
+      data1.push([getEmployeeNames([dat.employee]), dat.amt]);
+    });
+    return data1;
+  }
+  function formatCreditSalesData(data) {
+    let data1 = [];
+    data.forEach((dat) => {
+      data1.push([
+        dat.companyName,
+        parseFloat(dat.volume) * parseFloat(dat.discountedPrice),
+      ]);
+    });
+    return data1;
+  }
+  if (expenses.length) target.value(formatExpensesData(expenses));
+  target = currentSheet.cell("G38");
+  if (cashadvance.length) target.value(formatCashAdvanceData(cashadvance));
+  target = currentSheet.cell("J38");
+  if (creditsales.length) target.value(formatCreditSalesData(creditsales));
+  return workbook;
 };
 ShiftForm.update = async (shiftForm, fId) => {
   // delete
@@ -240,7 +337,7 @@ const getPumpInfo = (num, currentBasis, previousBasis) => {
   }
   return pumpInfo;
 };
-function formatShiftForResults(result, shiftFormDate, placement, shift) {
+function formatShiftFormResults(result, shiftFormDate, placement, shift) {
   if (result.shiftFormNotFound) {
     console.log("heyy");
     // console.log(result.res);
@@ -391,7 +488,7 @@ ShiftForm.get = async (date, shift, placement) => {
       // return the overall latest placement where the date is earliest
       // compared to the form
       let result = await myQuery(pumpInfosQuery, [lastShiftForm.fId]);
-      return formatShiftForResults(
+      return formatShiftFormResults(
         { res: result, shiftFormNotFound: true },
         date,
         placement,
@@ -400,7 +497,7 @@ ShiftForm.get = async (date, shift, placement) => {
     } else {
       // If shiftForm at placement - 1 exists,
       let result = await myQuery(pumpInfosQuery, [lastShiftForm[0].fId]);
-      return formatShiftForResults(
+      return formatShiftFormResults(
         { res: result, shiftFormNotFound: true },
         date,
         placement,
@@ -451,7 +548,7 @@ ShiftForm.get = async (date, shift, placement) => {
           lastShiftForm.fId,
         ]
       );
-      return formatShiftForResults(result, date, placement, shift);
+      return formatShiftFormResults(result, date, placement, shift);
     }
     // This case is when getting the 'origin' form
 
@@ -459,7 +556,7 @@ ShiftForm.get = async (date, shift, placement) => {
       `${shiftEmployeesQuery}; ${pumpGroupPricesQuery}; ${pumpInfosQuery}; ${dropFormQuery}; ${lastDropBreakDownQuery}; ${expensesQuery}; ${creditSalesQuery}; ${cashAdvancesQuery}; ${dipstickQuery}`,
       [fId, fId, fId, fId, fId, fId, fId, fId, fId]
     );
-    return formatShiftForResults(result, date, placement, shift);
+    return formatShiftFormResults(result, date, placement, shift);
   }
 };
 
