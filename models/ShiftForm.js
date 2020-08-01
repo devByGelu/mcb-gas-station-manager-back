@@ -63,9 +63,43 @@ ShiftForm.fillSummary = async (workbook, shiftForms) => {
   let firstSheetName = `${date}-${shift}-${placement}`;
 
   let initialSalesFormula = `=SUM('${firstSheetName}'!L6,'${firstSheetName}'!L18)`;
-
+  let initialCreditSalesFormula = `='${firstSheetName}'!K53`;
+  let initialWithdrawalsFormula = `='${firstSheetName}'!E53`;
+  let initialPurchasesFormula = `='${firstSheetName}'!P53`;
+  let initialDieselLSoldFormula = `='${firstSheetName}'!B32`;
+  let initialDieselSalesFormula = `='${firstSheetName}'!C32`;
+  let initialJxpremiumLSoldFormula = `='${firstSheetName}'!B33`;
+  let initialJxpremiumSalesFormula = `='${firstSheetName}'!C33`;
+  let initialAccelrateLSoldFormula = `='${firstSheetName}'!B34`;
+  let initialAccelrateSalesFormula = `='${firstSheetName}'!C34`;
   let salesFormula = initialSalesFormula;
+  let creditSalesFormula = initialCreditSalesFormula;
+  let withdrawalsFormula = initialWithdrawalsFormula;
+  let purchasesFormula = initialPurchasesFormula;
+  let dieselLSoldFormula = initialDieselLSoldFormula;
+  let dieselSalesFormula = initialDieselSalesFormula;
+  let jxpremiumLSoldFormula = initialJxpremiumLSoldFormula;
+  let jxpremiumSalesFormula = initialJxpremiumSalesFormula;
+  let accelrateLSoldFormula = initialAccelrateLSoldFormula;
+  let accelrateSalesFormula = initialAccelrateSalesFormula;
 
+  function writeData(prevDate) {
+    data.push([
+      prevDate,
+      salesFormula,
+      creditSalesFormula,
+      withdrawalsFormula,
+      purchasesFormula,
+      ,
+      ,
+      dieselLSoldFormula,
+      dieselSalesFormula,
+      jxpremiumLSoldFormula,
+      jxpremiumSalesFormula,
+      accelrateLSoldFormula,
+      accelrateSalesFormula,
+    ]);
+  }
   for (let i = 1; i < shiftForms.length; i++) {
     let prevDate = dateFormat(new Date(shiftForms[i - 1].date), "yyyy-mm-dd");
     let currDate = dateFormat(new Date(shiftForms[i].date), "yyyy-mm-dd");
@@ -74,10 +108,28 @@ ShiftForm.fillSummary = async (workbook, shiftForms) => {
 
     if (prevDate === currDate) {
       salesFormula = `${salesFormula} + SUM('${sheetName}'!L6,'${sheetName}'!L18)`;
-      if (i === shiftForms.length - 1) data.push([prevDate, salesFormula]);
+      creditSalesFormula = `${creditSalesFormula} + '${sheetName}'!K53`;
+      withdrawalsFormula = `${withdrawalsFormula} + '${sheetName}'!E53`;
+      purchasesFormula = `${purchasesFormula} + '${sheetName}'!P53`;
+      dieselLSoldFormula = `${dieselLSoldFormula} + '${sheetName}'!B32`;
+      dieselSalesFormula = `${dieselSalesFormula} + '${sheetName}'!C32`;
+      jxpremiumLSoldFormula = `${jxpremiumLSoldFormula} + '${sheetName}'!B33`;
+      jxpremiumSalesFormula = `${jxpremiumSalesFormula} + '${sheetName}'!C33`;
+      accelrateLSoldFormula = `${accelrateLSoldFormula} + '${sheetName}'!B34`;
+      accelrateSalesFormula = `${accelrateSalesFormula} + '${sheetName}'!C34`;
+      if (i === shiftForms.length - 1) writeData(prevDate);
     } else {
-      data.push([prevDate, salesFormula]);
+      writeData(prevDate);
       salesFormula = `=SUM('${sheetName}'!L6,'${sheetName}'!L18)`;
+      creditSalesFormula = `='${sheetName}'!K53`;
+      withdrawalsFormula = `='${sheetName}'!E53`;
+      purchasesFormula = `='${sheetName}'!P53`;
+      dieselLSoldFormula = `='${sheetName}'!B32`;
+      dieselSalesFormula = `='${sheetName}'!C32`;
+      jxpremiumLSoldFormula = `='${sheetName}'!B33`;
+      jxpremiumSalesFormula = `='${sheetName}'!C33`;
+      accelrateLSoldFormula = `='${sheetName}'!B34`;
+      accelrateSalesFormula = `='${sheetName}'!C34`;
     }
   }
 
@@ -91,7 +143,6 @@ ShiftForm.fillDSR = async (workbook, formData) => {
     Object.keys(breakdown).forEach((key, index) => {
       if (index > 0) data.push([breakdown[key]]);
     });
-    console.log(data);
     return data;
   }
   function getDipstickData(product) {
@@ -176,7 +227,18 @@ ShiftForm.fillDSR = async (workbook, formData) => {
   target.value(getBreakdowndata(breakdown));
 
   target = currentSheet.cell("D38");
-  const { expenses, creditsales, cashadvance } = formData;
+  let { expenses, creditsales, cashadvance } = formData;
+  let purchases = expenses.filter(({ catName }) => catName === "Fuel Refill");
+
+  expenses = expenses.filter(({ catName }) => catName !== "Fuel Refill");
+
+  function formatPurchasesData(data) {
+    let data1 = [];
+    data.forEach((dat) => {
+      data1.push([dat.description, dat.total]);
+    });
+    return data1;
+  }
   function formatExpensesData(data) {
     let data1 = [];
     data.forEach((dat) => {
@@ -206,6 +268,8 @@ ShiftForm.fillDSR = async (workbook, formData) => {
   if (cashadvance.length) target.value(formatCashAdvanceData(cashadvance));
   target = currentSheet.cell("J38");
   if (creditsales.length) target.value(formatCreditSalesData(creditsales));
+  target = currentSheet.cell("O38");
+  if (purchases.length) target.value(formatPurchasesData(purchases));
   return workbook;
 };
 ShiftForm.update = async (shiftForm, fId) => {
