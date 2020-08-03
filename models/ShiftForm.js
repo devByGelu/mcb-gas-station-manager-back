@@ -72,6 +72,8 @@ ShiftForm.fillSummary = async (workbook, shiftForms) => {
   let initialJxpremiumSalesFormula = `='${firstSheetName}'!C33`;
   let initialAccelrateLSoldFormula = `='${firstSheetName}'!B34`;
   let initialAccelrateSalesFormula = `='${firstSheetName}'!C34`;
+  let initialIncomeFormula = `='${firstSheetName}'!D35`;
+
   let salesFormula = initialSalesFormula;
   let creditSalesFormula = initialCreditSalesFormula;
   let withdrawalsFormula = initialWithdrawalsFormula;
@@ -82,6 +84,7 @@ ShiftForm.fillSummary = async (workbook, shiftForms) => {
   let jxpremiumSalesFormula = initialJxpremiumSalesFormula;
   let accelrateLSoldFormula = initialAccelrateLSoldFormula;
   let accelrateSalesFormula = initialAccelrateSalesFormula;
+  let incomeFormula = initialIncomeFormula;
 
   function writeData(prevDate) {
     data.push([
@@ -98,6 +101,7 @@ ShiftForm.fillSummary = async (workbook, shiftForms) => {
       jxpremiumSalesFormula,
       accelrateLSoldFormula,
       accelrateSalesFormula,
+      incomeFormula,
     ]);
   }
   for (let i = 1; i < shiftForms.length; i++) {
@@ -117,6 +121,7 @@ ShiftForm.fillSummary = async (workbook, shiftForms) => {
       jxpremiumSalesFormula = `${jxpremiumSalesFormula} + '${sheetName}'!C33`;
       accelrateLSoldFormula = `${accelrateLSoldFormula} + '${sheetName}'!B34`;
       accelrateSalesFormula = `${accelrateSalesFormula} + '${sheetName}'!C34`;
+      incomeFormula = `${incomeFormula} + '${sheetName}'!D35`;
       if (i === shiftForms.length - 1) writeData(prevDate);
     } else {
       writeData(prevDate);
@@ -130,6 +135,7 @@ ShiftForm.fillSummary = async (workbook, shiftForms) => {
       jxpremiumSalesFormula = `='${sheetName}'!C33`;
       accelrateLSoldFormula = `='${sheetName}'!B34`;
       accelrateSalesFormula = `='${sheetName}'!C34`;
+      incomeFormula = `='${sheetName}'!D35`;
     }
   }
 
@@ -211,7 +217,7 @@ ShiftForm.fillDSR = async (workbook, formData) => {
   target.value(getPumpInfoData(pump4, 4));
 
   const { diesel, accelrate, jxpremium } = formData;
-  target = currentSheet.cell("D32");
+  target = currentSheet.cell("E32");
   target.value([
     getDipstickData(diesel),
     getDipstickData(jxpremium),
@@ -426,19 +432,44 @@ const getPumpInfo = (num, currentBasis, previousBasis) => {
     previousBasis.forEach((prev) => {
       const { end, pName } = prev;
       const beg = end;
-      pumpInfo[pName] = {
-        beg,
-      };
+      pumpInfo[pName] = { beg };
     });
   }
   return pumpInfo;
 };
 function formatShiftFormResults(result, shiftFormDate, placement, shift) {
+  if (!result) {
+    const data = {
+      diesel: {
+        beg: 0,
+      },
+      jxpremium: {
+        beg: -1,
+      },
+      accelrate: {
+        beg: 69,
+      },
+    };
+    const d = new Date(shiftFormDate); // deduct 1 to respect month index
+    let formData = {
+      shiftFormNotFound: true,
+      shiftDate: dateFormat(d, "yyyy-mm-dd"),
+      shift: shift,
+      placement,
+      pump1: data,
+      pump2: data,
+      pump3: data,
+      pump4: data,
+      pumpAttendants: [null, null, null],
+
+      expenses: [],
+      creditsales: [],
+      cashadvance: [],
+    };
+    // console.log(formData);
+    return formData;
+  }
   if (result.shiftFormNotFound) {
-    console.log("heyy");
-    // console.log(result.res);
-    // Formatting date
-    // const d = new Date(year, parseInt(month, "10") - 1, day); // deduct 1 to respect month index
     const d = new Date(shiftFormDate); // deduct 1 to respect month index
     let formData = {
       shiftFormNotFound: result.shiftFormNotFound,
@@ -569,6 +600,12 @@ ShiftForm.get = async (date, shift, placement) => {
             return true;
       });
 
+      if (!lastShiftForm) {
+        // Form has no previous
+        return formatShiftFormResults(undefined, date, placement, shift);
+      }
+
+      console.log("ws");
       console.log(
         "previous form: ",
         JSON.stringify(dateFormat(new Date(lastShiftForm.date), "yyyy-mm-dd"))
@@ -646,13 +683,13 @@ ShiftForm.get = async (date, shift, placement) => {
       );
       return formatShiftFormResults(result, date, placement, shift);
     }
-    // This case is when getting the 'origin' form
+    // // This case is when getting the 'origin' form
 
-    let result = await myQuery(
-      `${shiftEmployeesQuery}; ${pumpGroupPricesQuery}; ${pumpInfosQuery}; ${dropFormQuery}; ${lastDropBreakDownQuery}; ${expensesQuery}; ${creditSalesQuery}; ${cashAdvancesQuery}; ${dipstickQuery}`,
-      [fId, fId, fId, fId, fId, fId, fId, fId, fId]
-    );
-    return formatShiftFormResults(result, date, placement, shift);
+    // let result = await myQuery(
+    //   `${shiftEmployeesQuery}; ${pumpGroupPricesQuery}; ${pumpInfosQuery}; ${dropFormQuery}; ${lastDropBreakDownQuery}; ${expensesQuery}; ${creditSalesQuery}; ${cashAdvancesQuery}; ${dipstickQuery}`,
+    //   [fId, fId, fId, fId, fId, fId, fId, fId, fId]
+    // );
+    // return formatShiftFormResults(result, date, placement, shift);
   }
 };
 
