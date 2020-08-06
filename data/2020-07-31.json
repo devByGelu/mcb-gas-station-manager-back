@@ -1,0 +1,46 @@
+{
+  "pump1": {
+    "diesel": {
+      "beg": 57520.564
+    },
+    "jxpremium": {
+      "beg": 134965.038
+    },
+    "accelrate": {
+      "beg": 81869.265
+    }
+  },
+  "pump2": {
+    "diesel": {
+      "beg": 90738.249
+    },
+    "jxpremium": {
+      "beg": 135316.158
+    },
+    "accelrate": {
+      "beg": 138014.789
+    }
+  },
+  "pump3": {
+    "diesel": {
+      "beg": 212619.233
+    },
+    "jxpremium": {
+      "beg": 155567.242
+    },
+    "accelrate": {
+      "beg": 186714.808
+    }
+  },
+  "pump4": {
+    "diesel": {
+      "beg": 325631.562
+    },
+    "jxpremium": {
+      "beg": 73016.743
+    },
+    "accelrate": {
+      "beg": 250864.638
+    }
+  }
+}

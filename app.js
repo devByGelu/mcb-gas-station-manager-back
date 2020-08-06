@@ -3,6 +3,7 @@ const bodyParser = require("body-parser");
 const HttpError = require("./models/http-error");
 const employeesRoutes = require("./routes/employees");
 const productsRoutes = require("./routes/products");
+const usersRoutes = require("./routes/users");
 const expenseCategoriesRoutes = require("./routes/expenseCategories");
 const shiftFormsRoutes = require("./routes/shiftForms");
 const customersRoutes = require("./routes/customers");
@@ -16,7 +17,9 @@ app.use(bodyParser.json());
 
 // parse requests of content-type: application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cors({exposedHeaders: [ 'Content-Disposition','X-Suggested-Filename'],}));
+app.use(
+  cors({ exposedHeaders: ["Content-Disposition", "X-Suggested-Filename"] })
+);
 app.use((req, res, next) => {
   if ("OPTIONS" == req.method) {
     res.sendStatus(200);
@@ -39,11 +42,13 @@ app.use("/api/customers", customersRoutes);
 
 app.use("/api/products", productsRoutes);
 
+app.use("/api/users", usersRoutes);
+
 app.use((error, req, res, next) => {
   if (res.headerSent) {
     return next(error);
   } else {
-    res.status(error.code || 500); // 500 someth went wrong
+    res.status(error.code || 500);
     res.json({ message: error.message || "An unknown" });
   }
 });

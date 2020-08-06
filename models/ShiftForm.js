@@ -1,5 +1,6 @@
 const sql = require("./db.js");
 const excel = require("exceljs");
+const fs = require("fs");
 const dateFormat = require("dateformat");
 const Employee = require("./Employee.js");
 const ExpenseCategory = require("./ExpenseCategory.js");
@@ -389,7 +390,7 @@ ShiftForm.create = async (shiftForm, shiftFormFId) => {
       });
     return fId;
   } catch (error) {
-    console.log(error);
+    return error;
   }
 };
 const getPumpInfo = (num, currentBasis, previousBasis) => {
@@ -437,29 +438,63 @@ const getPumpInfo = (num, currentBasis, previousBasis) => {
   }
   return pumpInfo;
 };
-function formatShiftFormResults(result, shiftFormDate, placement, shift) {
-  if (!result) {
-    const data = {
-      diesel: {
-        beg: 0,
-      },
-      jxpremium: {
-        beg: -1,
-      },
-      accelrate: {
-        beg: 69,
-      },
+function getOriginData() {
+  return new Promise((resolve, reject) => {
+    fs.readFile("data/2020-07-31.json", "utf8", function (err, data) {
+      if (err) return reject(err);
+      else {
+        return resolve(data);
+      }
+    });
+  });
+}
+function getPumpInfoDefaults() {
+  return new Promise((resolve, reject) => {
+    fs.readFile("data/pumpInfoDefaults.json", "utf8", function (err, data) {
+      if (err) return reject(err);
+      else {
+        // return resolve(data);
+        let parsedData = JSON.parse(data);
+        return resolve(parsedData);
+      }
+    });
+  });
+}
+function extractData(extraData, product, number) {
+  let newData = {};
+  Object.keys(extraData[`pump${number}`][product]).forEach((key) => {
+    newData[key] = {};
+    newData[key] = extraData[`pump${number}`][product][key];
+  });
+  return newData;
+}
+function updatePumpInfo(pumpInfo, extraData, number) {
+  const data = {};
+  const products = ["diesel", "accelrate", "jxpremium"];
+  products.forEach((product) => {
+    data[product] = {};
+    data[product] = {
+      ...pumpInfo[product],
+      ...extractData(extraData, product, number),
     };
+  });
+  return data;
+}
+async function formatShiftFormResults(result, shiftFormDate, placement, shift) {
+  if (!result) {
     const d = new Date(shiftFormDate); // deduct 1 to respect month index
+    let data = await getOriginData();
+    data = JSON.parse(data);
+    let pumpInfoDefaults = await getPumpInfoDefaults();
     let formData = {
       shiftFormNotFound: true,
       shiftDate: dateFormat(d, "yyyy-mm-dd"),
       shift: shift,
       placement,
-      pump1: data,
-      pump2: data,
-      pump3: data,
-      pump4: data,
+      pump1: updatePumpInfo(data.pump1, pumpInfoDefaults, 1),
+      pump2: updatePumpInfo(data.pump2, pumpInfoDefaults, 2),
+      pump3: updatePumpInfo(data.pump3, pumpInfoDefaults, 3),
+      pump4: updatePumpInfo(data.pump4, pumpInfoDefaults, 4),
       pumpAttendants: [null, null, null],
 
       expenses: [],

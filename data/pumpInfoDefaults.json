@@ -1,0 +1,58 @@
+{
+  "pump1": {
+    "diesel": {
+      "cal": 0,
+      "mgn": 4
+    },
+    "jxpremium": {
+      "cal": 0,
+      "mgn": 4.3
+    },
+    "accelrate": {
+      "cal": 0,
+      "mgn": 4.3
+    }
+  },
+  "pump2": {
+    "diesel": {
+      "cal": 0,
+      "mgn": 4.3
+    },
+    "jxpremium": {
+      "cal": 0,
+      "mgn": 4
+    },
+    "accelrate": {
+      "cal": 0,
+      "mgn": 4.3
+    }
+  },
+  "pump3": {
+    "diesel": {
+      "cal": 0,
+      "mgn": 3
+    },
+    "jxpremium": {
+      "cal": 0,
+      "mgn": 3.3
+    },
+    "accelrate": {
+      "cal": 0,
+      "mgn": 3.3
+    }
+  },
+  "pump4": {
+    "diesel": {
+      "cal": 0,
+      "mgn": 3.3
+    },
+    "jxpremium": {
+      "cal": 0,
+      "mgn": 3
+    },
+    "accelrate": {
+      "cal": 0,
+      "mgn": 3.3
+    }
+  }
+}
