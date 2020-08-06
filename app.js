@@ -1,4 +1,5 @@
 const express = require("express");
+require("dotenv").config();
 const bodyParser = require("body-parser");
 const HttpError = require("./models/http-error");
 const employeesRoutes = require("./routes/employees");
@@ -12,6 +13,11 @@ const formRoutes = require("./routes/form");
 const app = express();
 var cors = require("cors");
 
+app.use(
+  bodyParser.urlencoded({
+    extended: true,
+  })
+);
 // parse requests of content-type: application/json
 app.use(bodyParser.json());
 
@@ -54,6 +60,6 @@ app.use((error, req, res, next) => {
 });
 
 // set port, listen for requests
-app.listen(5000, () => {
-  console.log("Server is running on port 5000.");
+app.listen(process.env.PORT, () => {
+  console.log(`Server is running on port ${process.env.PORT}.`);
 });
