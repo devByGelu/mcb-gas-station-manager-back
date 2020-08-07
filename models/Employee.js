@@ -10,6 +10,13 @@ const Employee = function (employee) {
   this.uName = uName;
 };
 
+Employee.findByUname = (uName) => {
+  return new Promise((resolve, reject) => {
+    sql.query(`SELECT * FROM employee WHERE uName = ?`, [uName], (err, res) =>
+      err ? reject(err) : resolve(res)
+    );
+  });
+};
 Employee.create = (employee) => {
   return new Promise((resolve, reject) => {
     sql.query(`INSERT INTO employee SET ?`, [employee], (err, res) =>

@@ -5,6 +5,7 @@ const HttpError = require("./models/http-error");
 const employeesRoutes = require("./routes/employees");
 const productsRoutes = require("./routes/products");
 const usersRoutes = require("./routes/users");
+const authRoutes = require("./routes/auth");
 const expenseCategoriesRoutes = require("./routes/expenseCategories");
 const shiftFormsRoutes = require("./routes/shiftForms");
 const customersRoutes = require("./routes/customers");
@@ -49,6 +50,8 @@ app.use("/api/customers", customersRoutes);
 app.use("/api/products", productsRoutes);
 
 app.use("/api/users", usersRoutes);
+
+app.use("/api/auth", authRoutes);
 
 app.use((error, req, res, next) => {
   if (res.headerSent) {

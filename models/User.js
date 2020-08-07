@@ -7,6 +7,13 @@ const User = function (user) {
   this.password = password;
 };
 
+User.find = (uName) => {
+  return new Promise((resolve, reject) => {
+    sql.query(`SELECT * FROM user WHERE uName = ?`, [uName], (err, res) =>
+      err ? reject(err) : resolve(res)
+    );
+  });
+};
 User.create = (user) => {
   return new Promise((resolve, reject) => {
     sql.query(`INSERT INTO user SET ?`, [user], (err, res) =>
