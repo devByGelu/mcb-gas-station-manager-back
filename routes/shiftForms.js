@@ -4,6 +4,8 @@ const router = express.Router();
 
 const shiftFormsController = require("../controllers/shift-forms-controller");
 
+const auth = require("./middleware/auth");
+
 router.post("/", shiftFormsController.create);
 router.patch("/:fId", shiftFormsController.update);
 

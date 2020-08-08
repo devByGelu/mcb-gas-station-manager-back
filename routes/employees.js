@@ -1,8 +1,10 @@
-const express = require('express')
+const express = require("express");
 
-const router = express.Router()
+const router = express.Router();
 
-const employeeController = require('../controllers/employees-controller')
+const employeeController = require("../controllers/employees-controller");
 
-router.get('/', employeeController.getEmployees)
-module.exports = router
+const auth = require("./middleware/auth");
+
+router.get("/", employeeController.getEmployees);
+module.exports = router;
