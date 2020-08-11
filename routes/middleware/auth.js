@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 exports.authenticate = async (req, res, next) => {
   try {
     const token = req.header("x-auth-token");
+    console.log(token);
     if (!token)
       return res
         .status(401)
@@ -17,7 +18,6 @@ exports.authenticate = async (req, res, next) => {
       res.status(400).json({ message: "Invalid token" });
     }
   } catch (error) {
-    console.log(error);
     res.status(500).send({ message: error });
   }
 };

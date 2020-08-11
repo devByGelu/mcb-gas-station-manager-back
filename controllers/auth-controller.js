@@ -33,13 +33,14 @@ exports.auth = async (req, res, next) => {
     res.status(500).send({ message: error });
   }
 };
+
 exports.getUser = async (req, res, next) => {
   const { uName } = req.user;
   let user;
   let employee;
   user = await User.find(uName);
 
-  if (!user.length) res.staus(400).send({ msg: "Username not found" });
+  if (!user.length) return res.staus(400).send({ msg: "Username not found" });
 
   employee = await Employee.findByUname(uName);
 
