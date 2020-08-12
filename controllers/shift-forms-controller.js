@@ -30,6 +30,9 @@ exports.download = async (req, res, next) => {
     let workbook = await XlsxPopulate.fromFileAsync(templatePath);
 
     const shiftForms = await ShiftForm.getBetweenDates(startDate, endDate);
+    if (!shiftForms.length) {
+      return res.status(404).json({ errors: { _error: "DSRs not found" } });
+    }
 
     for (const shiftForm of shiftForms) {
       let { date, shift, placement } = shiftForm;
@@ -59,7 +62,9 @@ exports.download = async (req, res, next) => {
     res.send(data);
   } catch (error) {
     console.log(error);
-    res.status(500).send({ message: error });
+    return res
+      .status(500)
+      .json({ errors: { _error: "Unexpected error occurred" } });
   }
 };
 exports.create = async (req, res, next) => {
@@ -132,9 +137,11 @@ exports.update = async (req, res, next) => {
 };
 
 exports.get = async (req, res, next) => {
+  console.log("IWAS CALLED");
   try {
     const { year, month, day, shift } = req.params;
     const { placement } = req.query;
+    console.log(year, month, day, shift, placement);
     const result = await ShiftForm.get(
       `${year}-${month}-${day}`,
       shift,

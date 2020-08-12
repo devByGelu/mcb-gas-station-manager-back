@@ -2,28 +2,23 @@ const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const sql = require("../models/db");
 const Employee = require("../models/Employee");
-const bcrypt = require("bcryptjs");
+const { getFormattedErrors, getErrors } = require("../routes/errors");
+
 exports.auth = async (req, res, next) => {
   try {
-    const { uName, password } = req.body;
+    const result = getFormattedErrors(req);
+    const errors = getErrors(req);
+
+    if (!errors.isEmpty())
+      return res.status(400).json({ errors: result.mapped() });
+
+    const { uName } = req.body;
     const user = await User.find(uName);
+    const loggedInEmployee = await Employee.findByUname(uName);
 
-    // Check if username exists
-    if (!user.length)
-      return res.status(400).json({ msg: "User does not exist" });
-
-    // Validate password
-    const correctPassword = await bcrypt.compare(password, user[0].password);
-    if (!correctPassword)
-      return res.status(400).json({ msg: "Incorrect password" });
-
-    // Generate token
     let token = jwt.sign({ uName }, process.env.JWT_SECRET, {
       expiresIn: 3600,
     });
-
-    const loggedInEmployee = await Employee.findByUname(uName);
-
     res.status(200).json({
       user: { ...user[0], ...loggedInEmployee[0] },
       token,
